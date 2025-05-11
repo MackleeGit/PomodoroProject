@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "630415458729",
+    "project_id": "pomodoroapp-5250d",
+    "storage_bucket": "pomodoroapp-5250d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630415458729:android:e151fb184bf5033a1244b8",
+        "android_client_info": {
+          "package_name": "com.example.pomodoroproject"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEHbBvcC-CbO34QZsTxhamiu86z2CZPi4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
