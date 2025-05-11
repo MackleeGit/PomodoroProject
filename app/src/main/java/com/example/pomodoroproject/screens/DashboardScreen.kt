@@ -12,6 +12,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -27,6 +29,7 @@ fun DashboardScreen(navHostController: NavHostController) {
     val authRepository = AuthRepository(navHostController, context)
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showSessionInitDialog by remember { mutableStateOf(false) }
+
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -109,21 +112,83 @@ fun DashboardScreen(navHostController: NavHostController) {
             }
         }
 
+        var sessionName by remember { mutableStateOf("") }
+        var pomoTimeInput by remember { mutableStateOf("25") }
+        var shortBreakInput by remember { mutableStateOf("5") }
+        var longBreakInput by remember { mutableStateOf("15") }
+
         if (showSessionInitDialog) {
-            SessionInitDialog(
-                onDismiss = { showSessionInitDialog = false },
-                onStart = { sessionName, pomo, short, long ->
-                    val sessionId = System.currentTimeMillis().toString()
-                    var userId = 1
-                    //val userId = authRepository.getUserId()
+            AlertDialog(
+                onDismissRequest = { showSessionInitDialog = false },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val pomo = pomoTimeInput.toIntOrNull() ?: 25
+                            val short = shortBreakInput.toIntOrNull() ?: 5
+                            val long = longBreakInput.toIntOrNull() ?: 15
+                            if (sessionName.isNotBlank()) {
+                                val sessionId = System.currentTimeMillis().toString()
+                                val userId = 1 // Replace with auth logic if needed
+                                navHostController.navigate(
+                                    "start_session/${sessionId}/${sessionName}/${userId}/${pomo}/${short}/${long}"
+                                )
+                                showSessionInitDialog = false
+                            }
+                        }
+                    ) {
+                        Text("Start Session")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSessionInitDialog = false }) {
+                        Text("Cancel")
+                    }
+                },
+                title = { Text("New Session Setup") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = sessionName,
+                            onValueChange = { sessionName = it },
+                            label = { Text("Session Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
 
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    navHostController.navigate(
-                        "start_session/${sessionId}/${sessionName}/${userId}/${pomo}/${short}/${long}"
-                    )
+                        OutlinedTextField(
+                            value = pomoTimeInput,
+                            onValueChange = { if (it.all(Char::isDigit)) pomoTimeInput = it },
+                            label = { Text("Pomodoro Length (min)") },
+                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = shortBreakInput,
+                            onValueChange = { if (it.all(Char::isDigit)) shortBreakInput = it },
+                            label = { Text("Short Break Length (min)") },
+                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = longBreakInput,
+                            onValueChange = { if (it.all(Char::isDigit)) longBreakInput = it },
+                            label = { Text("Long Break Length (min)") },
+                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             )
         }
+
 
 
 
@@ -184,63 +249,5 @@ fun DashboardScreenPreviewTest() {
     }
 }
 
-@Composable
-fun SessionInitDialog(
-    onDismiss: () -> Unit,
-    onStart: (String, Int, Int, Int) -> Unit
-) {
-    var sessionName by remember { mutableStateOf("") }
-    var pomoTime by remember { mutableStateOf(25) }
-    var shortBreak by remember { mutableStateOf(5) }
-    var longBreak by remember { mutableStateOf(15) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (sessionName.isNotBlank()) {
-                        onStart(sessionName, pomoTime, shortBreak, longBreak)
-                    }
-                }
-            ) {
-                Text("Start Session")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        title = { Text("New Session Setup") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = sessionName,
-                    onValueChange = { sessionName = it },
-                    label = { Text("Session Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = pomoTime.toString(),
-                    onValueChange = { pomoTime = it.toIntOrNull() ?: 25 },
-                    label = { Text("Pomodoro Length (min)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = shortBreak.toString(),
-                    onValueChange = { shortBreak = it.toIntOrNull() ?: 5 },
-                    label = { Text("Short Break Length (min)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = longBreak.toString(),
-                    onValueChange = { longBreak = it.toIntOrNull() ?: 15 },
-                    label = { Text("Long Break Length (min)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    )
-}
+

@@ -19,6 +19,7 @@ class Session {
     var timer: Int = 0
 
     var isPaused: Boolean = true
+    var isCountdown: Boolean = false
     var sessionActive: Boolean = false
 
     constructor()

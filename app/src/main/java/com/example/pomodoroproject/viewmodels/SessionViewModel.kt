@@ -67,21 +67,39 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Pause the timer
-    fun pauseTimer() {
+    fun pauseButton() {
         if (session.value == null) {
             Toast.makeText(context, "Cannot pause. No session loaded.", Toast.LENGTH_SHORT).show()
             return
         }
-        session.value?.isPaused = true
+        var isPaused = session.value?.isPaused
+
+        if(isPaused == false) {
+            session.value?.isPaused = true
+        }else{
+            session.value?.isPaused = false
+        }
     }
+
+    fun skipActivity() {
+        session.value?.isCountdown = false
+        handleActivityComplete()
+
+    }
+
+
 
     // Countdown logic with pause checking
     private fun startCountdown(durationMinutes: Int) {
+        session.value?.isCountdown = true
         val totalSeconds = durationMinutes * 60
         session.value?.timer = totalSeconds
 
         viewModelScope.launch {
             while (session.value != null && session.value!!.timer > 0) {
+                if (session.value?.isCountdown == false){
+                    break
+                }
 
                 if (session.value?.isPaused == true) {
                     delay(1000L)
@@ -95,10 +113,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                     session.value!!.timer = currentTime - 1
                     updateTimerDisplay()
                 }
+
+
+
             }
 
             if (session.value != null && session.value!!.timer <= 0) {
                 session.value!!.isPaused = true
+                session.value?.isCountdown = false
                 handleActivityComplete()
             }
         }
@@ -117,6 +139,18 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         timerDisplay.value = String.format("%02d:%02d", minutes, seconds)
     }
 
+
+    // Add this inside SessionViewModel
+    var completedActivity = mutableStateOf<String?>(null)
+        private set
+
+    fun clearCompletedActivity() {
+        completedActivity.value = null
+    }
+
+
+
+
     // Handle what happens when a Pomodoro or break ends
     private fun handleActivityComplete() {
         if (session.value == null) {
@@ -124,25 +158,48 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             return
         }
 
+        session.value?.timer = 0
+        updateTimerDisplay()
         val currentActivity = session.value!!.activity
 
-        if (currentActivity == "POMODORO") {
-            val currentCount = session.value!!.completedPomodoros
-            session.value!!.completedPomodoros = currentCount + 1
-            Toast.makeText(context, "Pomodoro complete. Choose a break or end session.", Toast.LENGTH_LONG).show()
-
-        } else if (currentActivity == "SHORT_BREAK"){
-            session.value!!.shortBreaks = session.value!!.shortBreaks + 1
-            Toast.makeText(context, "Break over. Ready for the next Pomodoro?", Toast.LENGTH_LONG).show()
-
-        }else if (currentActivity == "LONG_BREAK") {
-            Toast.makeText(context, "Break over. Ready for the next Pomodoro?", Toast.LENGTH_LONG).show()
-            session.value!!.shortBreaks = session.value!!.shortBreaks + 1
-
-        } else {
-            Toast.makeText(context, "Unknown session state after completion.", Toast.LENGTH_SHORT).show()
+        when (currentActivity) {
+            "POMODORO" -> {
+                session.value!!.completedPomodoros += 1
+                completedActivity.value = "POMODORO"
+            }
+            "SHORT_BREAK" -> {
+                session.value!!.shortBreaks += 1
+                completedActivity.value = "SHORT_BREAK"
+            }
+            "LONG_BREAK" -> {
+                session.value!!.shortBreaks += 1
+                completedActivity.value = "LONG_BREAK"
+            }
+            else -> {
+                Toast.makeText(context, "Unknown session state after completion.", Toast.LENGTH_SHORT).show()
+            }
         }
+    }
 
-        // Prompting user should happen in the UI
+    fun cycleActivity() {
+            if(session.value?.isCountdown == false){
+
+                session.value?.let {
+                    it.activity = when (it.activity) {
+                        "POMODORO" -> "SHORT_BREAK"
+                        "SHORT_BREAK" -> "LONG_BREAK"
+                        else -> "POMODORO"
+                    }
+                    session.value = it // trigger recomposition
+                    updateTimerDisplay()
+                }
+
+
+            }else{
+                Toast.makeText(context, "Cannot change activity during countdown.", Toast.LENGTH_SHORT).show()
+            }
+
     }
 }
+
+

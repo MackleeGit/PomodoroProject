@@ -1,11 +1,9 @@
 package com.example.pomodoroproject.screens
 
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,19 +24,52 @@ fun SessionScreen(
     val context = LocalContext.current
     val session = viewModel.session.value
     val timerDisplay = viewModel.timerDisplay.value
-    var showSessionEndDialog by remember { mutableStateOf(false) }
+    val completedActivity = viewModel.completedActivity.value
+    var showCompletionDialog by remember { mutableStateOf(false) }
+    var showSessionEndDialog by remember { mutableStateOf(false)}
+    var showSkipDialog by remember { mutableStateOf(false) }
+
+
+    LaunchedEffect(completedActivity) {
+        if (completedActivity != null) {
+            showCompletionDialog = true
+        }
+    }
 
     // Initialize the session when the screen is first loaded
     LaunchedEffect(key1 = sessionId) {
         viewModel.initializeSession(sessionId, sessionName, userId, pomo, short, long)
     }
 
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Session name and current activity (e.g., Pomodoro, Short Break)
         Text("Session: ${session?.name ?: "No Session"}", style = MaterialTheme.typography.headlineSmall)
-        Text("Activity: ${session?.activity ?: "No Activity"}", style = MaterialTheme.typography.titleMedium)
+        Row(modifier = Modifier.fillMaxWidth()){
+            Text("Activity:", style = MaterialTheme.typography.titleMedium)
+            if (session?.activity == "POMODORO") {
+                TextButton(onClick = { viewModel.cycleActivity() }) {
+                    Text("POMODORO")
+                }
+            } else if (session?.activity == "SHORT_BREAK") {
+                TextButton(onClick = { viewModel.cycleActivity() }) {
+                    Text("SHORT_BREAK")
+                }
+            }else{
+                TextButton(onClick = { viewModel.cycleActivity() }) {
+                Text("LONG_BREAK")
+            }
+
+            }
+
+        }
+
+
+
+
+
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -52,11 +83,17 @@ fun SessionScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Button(onClick = { viewModel.startTimer() }) {
-                Text("Start")
+            if (session?.isCountdown == true) {
+                Button(onClick = { showSkipDialog = true }) {
+                    Text("Skip")
+                }
+            } else {
+                Button(onClick = { viewModel.startTimer() }) {
+                    Text("Start")
+                }
             }
 
-            Button(onClick = { viewModel.pauseTimer() }) {
+            Button(onClick = { viewModel.pauseButton() }) {
                 Text("Pause")
             }
 
@@ -66,6 +103,90 @@ fun SessionScreen(
                 Text("End Session")
             }
         }
+
+        val message = when (completedActivity) {
+            "POMODORO" -> "Pomodoro complete. Choose your next break."
+            "SHORT_BREAK", "LONG_BREAK" -> "Break over. Ready for the next Pomodoro?"
+            else -> "Activity complete. What would you like to do next?"
+        }
+
+
+        if (showCompletionDialog){
+        AlertDialog(
+            onDismissRequest = {
+                showCompletionDialog = false
+                viewModel.clearCompletedActivity()
+            },
+            title = { Text("Activity Complete") },
+            text = { Text(message) },
+            confirmButton = {
+                when (completedActivity) {
+                    "POMODORO" -> {
+                        Column {
+                            TextButton(onClick = {
+                                showCompletionDialog = false
+                                session?.activity = "SHORT_BREAK"
+                                viewModel.clearCompletedActivity()
+                                viewModel.startTimer() // Start next segment
+                            }) {
+                                Text("Begin Short Break")
+                            }
+
+                            TextButton(onClick = {
+                                showCompletionDialog = false
+                                session?.activity = "LONG_BREAK"
+                                viewModel.clearCompletedActivity()
+                                viewModel.startTimer() // Start next segment
+                            }) {
+                                Text("Begin Long Break")
+                            }
+                        }
+                    }
+                    else -> {
+                        TextButton(onClick = {
+                            showCompletionDialog = false
+                            session?.activity = "POMODORO"
+                            viewModel.clearCompletedActivity()
+                            viewModel.startTimer() // Start next segment
+                        }) {
+                            Text("Begin Next Pomodoro")
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showCompletionDialog = false
+                    viewModel.clearCompletedActivity()
+                    viewModel.cycleActivity()
+                }) {
+                    Text("Not now")
+                }
+            }
+        )}
+
+        if (showSkipDialog) {
+            AlertDialog(
+                onDismissRequest = { showSkipDialog = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.skipActivity() // sets isCountdown = false
+                        showSkipDialog = false
+                    }) {
+                        Text("Yes, skip")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSkipDialog = false }) {
+                        Text("Cancel")
+                    }
+                },
+                title = { Text("Skip current activity?") },
+                text = { Text("Are you sure you want to skip this Pomodoro or break?") }
+            )
+        }
+
+
 
         // Session End Confirmation Dialog
         if (showSessionEndDialog) {
