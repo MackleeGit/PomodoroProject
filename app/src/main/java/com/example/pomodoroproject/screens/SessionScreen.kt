@@ -168,6 +168,16 @@ fun SessionScreen(
         if (showCompletionDialog){
         AlertDialog(
             onDismissRequest = {
+                when (completedActivity) {
+                    "POMODORO" -> {
+                        session?.activity = "SHORT_BREAK"
+                    }
+                    else -> {
+                        session?.activity = "POMODORO"
+
+                    }
+                }
+
                 showCompletionDialog = false
                 viewModel.clearCompletedActivity()
             },
@@ -210,9 +220,19 @@ fun SessionScreen(
             },
             dismissButton = {
                 TextButton(onClick = {
+
+                    when (completedActivity) {
+                        "POMODORO" -> {
+                            session?.activity = "SHORT_BREAK"
+                        }
+                        else -> {
+                            session?.activity = "POMODORO"
+
+                        }
+                    }
+
                     showCompletionDialog = false
                     viewModel.clearCompletedActivity()
-                    viewModel.cycleActivity()
                 }) {
                     Text("Not now")
                 }
