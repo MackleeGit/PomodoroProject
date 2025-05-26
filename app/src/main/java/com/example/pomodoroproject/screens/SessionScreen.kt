@@ -2,14 +2,20 @@ package com.example.pomodoroproject.screens
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.pomodoroproject.navigation.DASHBOARD_URL
 import com.example.pomodoroproject.viewmodels.SessionViewModel
-
+import com.example.pomodoroproject.viewmodels.SessionRepository
+import androidx.compose.ui.text.font.FontWeight
 @Composable
 fun SessionScreen(
     navHostController: NavHostController,
@@ -24,9 +30,11 @@ fun SessionScreen(
     val context = LocalContext.current
     val session = viewModel.session.value
     val timerDisplay = viewModel.timerDisplay.value
+    val sessionRepository = SessionRepository(navHostController, context)
     val completedActivity = viewModel.completedActivity.value
     var showCompletionDialog by remember { mutableStateOf(false) }
     var showSessionEndDialog by remember { mutableStateOf(false)}
+    var showSavePromptDialog by remember { mutableStateOf(false)}
     var showSkipDialog by remember { mutableStateOf(false) }
 
 
@@ -42,67 +50,113 @@ fun SessionScreen(
     }
 
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column( modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)
+        .padding(top = 24.dp)
+        .wrapContentSize(align = Alignment.TopCenter)
+        .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = session?.name ?: "No Session",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .wrapContentHeight(),
+            textAlign = TextAlign.Center
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text("Activity: ", style = MaterialTheme.typography.titleMedium)
 
-        // Session name and current activity (e.g., Pomodoro, Short Break)
-        Text("Session: ${session?.name ?: "No Session"}", style = MaterialTheme.typography.headlineSmall)
-        Row(modifier = Modifier.fillMaxWidth()){
-            Text("Activity:", style = MaterialTheme.typography.titleMedium)
-            if (session?.activity == "POMODORO") {
-                TextButton(onClick = { viewModel.cycleActivity() }) {
-                    Text("POMODORO")
-                }
-            } else if (session?.activity == "SHORT_BREAK") {
-                TextButton(onClick = { viewModel.cycleActivity() }) {
-                    Text("SHORT_BREAK")
-                }
-            }else{
-                TextButton(onClick = { viewModel.cycleActivity() }) {
-                Text("LONG_BREAK")
+            TextButton(onClick = { viewModel.cycleActivity() }) {
+                Text(session?.activity ?: "N/A", style = MaterialTheme.typography.titleMedium)
             }
+        }
 
-            }
-
+        Spacer(modifier = Modifier.height(32.dp))
+        // Live count row for Pomos and Breaks
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Pomodoros: ${session?.completedPomodoros ?: 0}",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = "Short Breaks: ${session?.shortBreaks ?: 0}",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = "Long Breaks: ${session?.longBreaks ?: 0}",
+                style = MaterialTheme.typography.titleSmall
+            )
         }
 
 
-
-
-
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Timer display in MM:SS format
-        Text(text = timerDisplay, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = timerDisplay,
+                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center
+            )
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         // Start / Pause / Stop Button
         Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 24.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            if (session?.isCountdown == true) {
-                Button(onClick = { showSkipDialog = true }) {
-                    Text("Skip")
-                }
-            } else {
-                Button(onClick = { viewModel.startTimer() }) {
-                    Text("Start")
-                }
+            val buttonSize = 100.dp
+
+            Button(
+                onClick = {
+                    if (session?.isCountdown == true) showSkipDialog = true
+                    else viewModel.startTimer()
+                },
+                modifier = Modifier
+                    .size(buttonSize)
+            ) {
+                Text(if (session?.isCountdown == true) "Skip" else "Start", textAlign = TextAlign.Center)
             }
 
-            Button(onClick = { viewModel.pauseButton() }) {
-                Text("Pause")
+            Button(
+                onClick = { if(session!!.isPaused) viewModel.resumeCountdown() else viewModel.pauseCountdown() },
+                modifier = Modifier
+                    .size(buttonSize)
+            ) {
+                Text(if (session?.isPaused == true) "Resume" else "Pause", textAlign = TextAlign.Center)
             }
 
-            Button(onClick = {
-                showSessionEndDialog = true
-            }) {
-                Text("End Session")
+            Button(
+                onClick = { showSessionEndDialog = true },
+                modifier = Modifier
+                    .size(buttonSize)
+            ) {
+                Text("End", textAlign = TextAlign.Center)
             }
         }
+
 
         val message = when (completedActivity) {
             "POMODORO" -> "Pomodoro complete. Choose your next break."
@@ -166,8 +220,11 @@ fun SessionScreen(
         )}
 
         if (showSkipDialog) {
+            viewModel.pauseCountdown()
             AlertDialog(
-                onDismissRequest = { showSkipDialog = false },
+                onDismissRequest = { showSkipDialog = false
+                 viewModel.resumeCountdown()
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         viewModel.skipActivity() // sets isCountdown = false
@@ -177,7 +234,9 @@ fun SessionScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showSkipDialog = false }) {
+                    TextButton(onClick = {
+                        showSkipDialog = false
+                        viewModel.resumeCountdown() }) {
                         Text("Cancel")
                     }
                 },
@@ -190,25 +249,107 @@ fun SessionScreen(
 
         // Session End Confirmation Dialog
         if (showSessionEndDialog) {
+            viewModel.pauseCountdown()
             AlertDialog(
-                onDismissRequest = { showSessionEndDialog = false },
+                onDismissRequest = {
+                    showSessionEndDialog = false
+                    viewModel.resumeCountdown()
+                },
+
                 title = { Text("End Session") },
                 text = { Text("Are you sure you want to end the session?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        // Logic to end the session and navigate back to the dashboard
                         showSessionEndDialog = false
-                        navHostController.navigate("dashboard")
+                        showSavePromptDialog = true
+
                     }) {
                         Text("Yes")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showSessionEndDialog = false }) {
+                    TextButton(onClick = {
+                        showSessionEndDialog = false
+                        viewModel.resumeCountdown()
+                    }) {
                         Text("No")
                     }
                 }
             )
         }
+
+        // Session Save Confirmation Dialog
+        if (showSavePromptDialog) {
+            val completedpomos = (session?.completedPomodoros?: 0)
+            if (completedpomos < 1){
+                AlertDialog(
+                    onDismissRequest = {
+                        showSavePromptDialog = false
+                        viewModel.resumeCountdown()
+                    },
+
+                    title = { Text("Save Session?") },
+                    text = { Text("You have not completed at least one pomodoro. This session will not be saved. (Click outside the dialog box to cancel session termination.)") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showSavePromptDialog = false
+                            navHostController.navigate(DASHBOARD_URL)
+
+
+                        }) {
+                            Text("OK")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showSavePromptDialog = false
+                                viewModel.resumeCountdown()
+                            }) {
+                            Text("No, proceed with session")
+                        }
+                    }
+                )
+            }else{
+                AlertDialog(
+                onDismissRequest = {
+                    showSavePromptDialog = false
+                    viewModel.resumeCountdown()
+                 },
+
+                    title = { Text("Save Session?") },
+                text = { Text("Do you wish to save the current session before terminating? (Click outside the dialog box to cancel session termination.)") },
+                confirmButton = {
+                    TextButton(onClick = {
+
+                        showSavePromptDialog = false
+                        session?.let {
+                            sessionRepository.SaveSession(it)
+                            navHostController.navigate(DASHBOARD_URL)
+                        }
+
+                    }) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showSavePromptDialog = false
+                            navHostController.navigate(DASHBOARD_URL)
+                        }) {
+                        Text("No, quit without saving ")
+                    }
+                }
+            )
+
+            }
+
+        }
+
+
+
+
+
     }
 }

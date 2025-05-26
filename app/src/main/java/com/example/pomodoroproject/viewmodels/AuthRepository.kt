@@ -10,6 +10,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.example.pomodoroproject.models.User
 import com.example.pomodoroproject.navigation.DASHBOARD_URL
 
+
 class AuthRepository(var navHostController: NavHostController, var context: Context) {
     private val mAuth: FirebaseAuth = FirebaseAuth.getInstance()
     private val progress: ProgressDialog = ProgressDialog(context).apply {
@@ -25,10 +26,11 @@ class AuthRepository(var navHostController: NavHostController, var context: Cont
                 val uid = mAuth.currentUser?.uid
                 if (uid != null) {
                     val databaseRef = FirebaseDatabase.getInstance().getReference("Users").child(uid)
-                    val userData = User(username, email, password, uid)
+                    val userData = User(username, email, uid)
                     databaseRef.setValue(userData)
                     Toast.makeText(context, "Account creation successful!!", Toast.LENGTH_SHORT).show()
-                    logOut()
+                    navHostController.navigate(DASHBOARD_URL)
+
                 } else {
                     Toast.makeText(context, "User ID is null", Toast.LENGTH_SHORT).show()
                 }
@@ -56,6 +58,7 @@ class AuthRepository(var navHostController: NavHostController, var context: Cont
     }
 
     fun logOut() {
+
         mAuth.signOut()
         navHostController.navigate(LOGIN_URL)
     }
@@ -64,6 +67,20 @@ class AuthRepository(var navHostController: NavHostController, var context: Cont
         return mAuth.currentUser?.uid ?: ""
     }
 
+    fun fetchUsernameFromDatabase(onResult: (String) -> Unit) {
+        val uid = getUserId()
+        if (uid != null) {
+            val ref = FirebaseDatabase.getInstance().getReference("Users").child(uid).child("username")
+            ref.get().addOnSuccessListener { snapshot ->
+                val username = snapshot.getValue(String::class.java) ?: "User"
+                onResult(username)
+            }.addOnFailureListener {
+                onResult("User")
+            }
+        } else {
+            onResult("Guest")
+        }
+    }
 
 
 

@@ -6,8 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pomodoroproject.models.Session
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -15,12 +17,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     var session = mutableStateOf<Session?>(null)
         private set
 
+    var completedActivity = mutableStateOf<String?>(null)
+        private set
+
     // Timer display state in MM:SS format
     var timerDisplay = mutableStateOf("00:00")
         private set
 
-    // Application context for Toasts
-    private val context = application.applicationContext
+    private var countdownJob: Job? = null
 
     // Initialize a new session
     fun initializeSession(sessionID: String, sessionName: String, userID: String, pomo: Int, short: Int, long: Int) {
@@ -37,6 +41,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         newSession.completedPomodoros = 0
         newSession.shortBreaks = 0
         newSession.isPaused = false
+        newSession.isSkipped = false
+
+
 
         session.value = newSession
         updateTimerDisplay()
@@ -47,7 +54,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     // Start the timer based on current activity
     fun startTimer() {
         if (session.value == null) {
-            Toast.makeText(context, "No active session found.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(getApplication<Application>(), "No active session found.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -62,27 +69,30 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         } else if (activity == "LONG_BREAK") {
             startCountdown(session.value!!.longBreakTime)
         } else {
-            Toast.makeText(context, "Unknown activity type.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(getApplication<Application>(), "Unknown activity type.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Pause the timer
-    fun pauseButton() {
-        if (session.value == null) {
-            Toast.makeText(context, "Cannot pause. No session loaded.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        var isPaused = session.value?.isPaused
-
-        if(isPaused == false) {
-            session.value?.isPaused = true
-        }else{
-            session.value?.isPaused = false
-        }
+    fun pauseCountdown() {
+        session.value?.isPaused = true
+        session.value = session.value // trigger recomposition
     }
+
+    fun resumeCountdown() {
+        session.value?.isPaused = false
+        session.value = session.value
+    }
+
+
+
 
     fun skipActivity() {
+        countdownJob?.cancel()
         session.value?.isCountdown = false
+        session.value!!.isPaused = true
+        session.value?.isSkipped = true
+        session.value?.timer = 0
+        updateTimerDisplay()
         handleActivityComplete()
 
     }
@@ -91,15 +101,14 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     // Countdown logic with pause checking
     private fun startCountdown(durationMinutes: Int) {
-        session.value?.isCountdown = true
-        val totalSeconds = durationMinutes * 60
-        session.value?.timer = totalSeconds
+        countdownJob = viewModelScope.launch {
+            session.value?.isCountdown = true
+            val totalSeconds = durationMinutes * 60
+            session.value?.isPaused = false
+            session.value?.timer = totalSeconds
 
-        viewModelScope.launch {
             while (session.value != null && session.value!!.timer > 0) {
-                if (session.value?.isCountdown == false){
-                    break
-                }
+                if (session.value?.isCountdown == false) break
 
                 if (session.value?.isPaused == true) {
                     delay(1000L)
@@ -108,14 +117,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
                 delay(1000L)
 
-                if (session.value != null) {
-                    val currentTime = session.value!!.timer
-                    session.value!!.timer = currentTime - 1
+                session.value?.let {
+                    it.timer = it.timer - 1
                     updateTimerDisplay()
                 }
-
-
-
             }
 
             if (session.value != null && session.value!!.timer <= 0) {
@@ -125,6 +130,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+
 
     // Update timer display in MM:SS format
     private fun updateTimerDisplay() {
@@ -136,13 +142,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val totalSeconds = session.value!!.timer
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
-        timerDisplay.value = String.format("%02d:%02d", minutes, seconds)
+        timerDisplay.value = String.format(Locale.US, "%02d:%02d", minutes, seconds)
     }
 
 
-    // Add this inside SessionViewModel
-    var completedActivity = mutableStateOf<String?>(null)
-        private set
+
+
 
     fun clearCompletedActivity() {
         completedActivity.value = null
@@ -153,33 +158,48 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     // Handle what happens when a Pomodoro or break ends
     private fun handleActivityComplete() {
-        if (session.value == null) {
-            Toast.makeText(context, "Activity ended, but session data is missing.", Toast.LENGTH_SHORT).show()
+        val currentSession = session.value ?: run {
+            Toast.makeText(getApplication<Application>(), "Activity ended, but session data is missing.", Toast.LENGTH_SHORT).show()
             return
         }
 
+
+        val wasSkipped = currentSession.isSkipped
         session.value?.timer = 0
         updateTimerDisplay()
+
         val currentActivity = session.value!!.activity
 
-        when (currentActivity) {
-            "POMODORO" -> {
+        if (currentActivity == "POMODORO"){
+            if (!wasSkipped) {
                 session.value!!.completedPomodoros += 1
-                completedActivity.value = "POMODORO"
+                Toast.makeText(getApplication<Application>(), "Pomodoro Complete.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(getApplication<Application>(), "Pomodoro skipped. It will not be counted.", Toast.LENGTH_SHORT).show()
             }
-            "SHORT_BREAK" -> {
+            session.value!!.isSkipped = false // Reset immediately after check
+            completedActivity.value = "POMODORO"
+
+        }else if (currentActivity == "SHORT_BREAK"){
+            if (!wasSkipped) {
                 session.value!!.shortBreaks += 1
-                completedActivity.value = "SHORT_BREAK"
+            } else {
+                Toast.makeText(getApplication<Application>(), "Break session skipped. It will not be counted.", Toast.LENGTH_SHORT).show()
             }
-            "LONG_BREAK" -> {
-                session.value!!.shortBreaks += 1
-                completedActivity.value = "LONG_BREAK"
+            session.value!!.isSkipped = false
+            completedActivity.value = "SHORT_BREAK"
+
+        }else{
+            if (!wasSkipped) {
+                session.value!!.longBreaks += 1
+            } else {
+                Toast.makeText(getApplication<Application>(), "Break session skipped. It will not be counted.", Toast.LENGTH_SHORT).show()
             }
-            else -> {
-                Toast.makeText(context, "Unknown session state after completion.", Toast.LENGTH_SHORT).show()
-            }
+            session.value!!.isSkipped = false
+            completedActivity.value = "LONG_BREAK"
         }
     }
+
 
     fun cycleActivity() {
             if(session.value?.isCountdown == false){
@@ -196,7 +216,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
 
             }else{
-                Toast.makeText(context, "Cannot change activity during countdown.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(getApplication<Application>(), "Cannot change activity during countdown.", Toast.LENGTH_SHORT).show()
             }
 
     }

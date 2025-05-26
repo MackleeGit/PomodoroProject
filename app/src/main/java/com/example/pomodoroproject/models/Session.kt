@@ -1,12 +1,16 @@
 package com.example.pomodoroproject.models
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 class Session {
     var id: String = ""
     var name: String = ""
     var date: Long = System.currentTimeMillis()
     var userID: String = ""
 
-    var totalDuration: String = ""
     var completedPomodoros: Int = 0
     var shortBreaks: Int = 0
     var longBreaks: Int = 0
@@ -15,12 +19,23 @@ class Session {
     var shortBreakTime: Int = 0
     var longBreakTime: Int = 0
 
-    var activity: String = ""
+    val totalDuration:Int
+        get() = (completedPomodoros * pomodoroTime) +
+                (shortBreaks * shortBreakTime) +
+                (longBreaks * longBreakTime)
+
+    var activity by  mutableStateOf("")
     var timer: Int = 0
+
+    val workingtime: Int
+        get() = completedPomodoros * pomodoroTime
+
+
 
     var isPaused: Boolean = true
     var isCountdown: Boolean = false
     var sessionActive: Boolean = false
+    var isSkipped: Boolean = false
 
     constructor()
 

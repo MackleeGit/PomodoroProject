@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "630415458729",
+    "firebase_url": "https://pomodoroapp-5250d-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "pomodoroapp-5250d",
     "storage_bucket": "pomodoroapp-5250d.firebasestorage.app"
   },

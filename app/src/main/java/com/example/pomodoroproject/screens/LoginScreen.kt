@@ -15,10 +15,7 @@ import androidx.navigation.NavHostController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.example.pomodoroproject.navigation.REGISTER_URL
-import com.example.pomodoroproject.navigation.DASHBOARD_URL
-import com.example.pomodoroproject.navigation.VIEW_SESSIONS
-import com.example.pomodoroproject.navigation.SESSION_PAGE_URL
-import com.example.pomodoroproject.navigation.SESSION_INFO_SCREEN
+
 
 import com.example.pomodoroproject.ui.theme.PomodoroProjectTheme
 import com.example.pomodoroproject.viewmodels.AuthRepository
@@ -86,39 +83,8 @@ fun LoginScreen(navHostController: NavHostController) {
             Text("Don't have an account? Register")
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
 
-// Temporary test navigation buttons
-        Text("Navigation Test Buttons", style = MaterialTheme.typography.labelLarge)
-        Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = { navHostController.navigate(REGISTER_URL) }) {
-                Text("Register")
-            }
-            Button(onClick = { navHostController.navigate(DASHBOARD_URL) }) {
-                Text("Dashboard")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = { navHostController.navigate(VIEW_SESSIONS) }) {
-                Text("View Sessions")
-            }
-            Button(onClick = { navHostController.navigate(SESSION_PAGE_URL) }) {
-                Text("Session")
-            }
-            Button(onClick = { navHostController.navigate("$SESSION_INFO_SCREEN/test-id") }) {
-                Text("Session Info")
-            }
         }
 
 
@@ -126,7 +92,7 @@ fun LoginScreen(navHostController: NavHostController) {
     }
 
 
-}
+
 
 @Preview(showBackground = true)
 @Composable

@@ -42,7 +42,7 @@ fun AppNavHost(
             arguments = listOf(
                 navArgument("sessionId") { type = NavType.StringType },
                 navArgument("sessionName") { type = NavType.StringType },
-                navArgument("userId") { type = NavType.IntType },
+                navArgument("userId") { type = NavType.StringType },
                 navArgument("pomo") { type = NavType.IntType },
                 navArgument("short") { type = NavType.IntType },
                 navArgument("long") { type = NavType.IntType }
@@ -80,9 +80,8 @@ fun AppNavHost(
         composable("dashboard") {
             DashboardScreen(navHostController)
         }
-        composable("session_info/{sessionId}") {
-            val sessionId = "1" //Change this later
-            //backStackEntry -> val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+        composable("session_info/{sessionId}") { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
             SessionInfoScreen(sessionId = sessionId, navHostController = navHostController)
         }
 
