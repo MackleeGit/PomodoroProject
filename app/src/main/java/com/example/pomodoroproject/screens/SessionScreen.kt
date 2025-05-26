@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import android.media.MediaPlayer
+import com.example.pomodoroproject.R
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -16,6 +18,11 @@ import com.example.pomodoroproject.navigation.DASHBOARD_URL
 import com.example.pomodoroproject.viewmodels.SessionViewModel
 import com.example.pomodoroproject.viewmodels.SessionRepository
 import androidx.compose.ui.text.font.FontWeight
+import android.app.Activity
+import android.view.WindowManager
+
+
+
 @Composable
 fun SessionScreen(
     navHostController: NavHostController,
@@ -36,11 +43,28 @@ fun SessionScreen(
     var showSessionEndDialog by remember { mutableStateOf(false)}
     var showSavePromptDialog by remember { mutableStateOf(false)}
     var showSkipDialog by remember { mutableStateOf(false) }
+    val mediaPlayer = remember { MediaPlayer.create(context, R.raw.alarm_sound) }
+    val flagactivity = context as? Activity
 
+    LaunchedEffect(session?.isCountdown, session?.isPaused) {
+        if (session?.isCountdown == true && session?.isPaused == false) {
+            flagactivity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            flagactivity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     LaunchedEffect(completedActivity) {
         if (completedActivity != null) {
             showCompletionDialog = true
+            mediaPlayer.start()
+        }
+    }
+
+    LaunchedEffect(showCompletionDialog) {
+        if (!showCompletionDialog && mediaPlayer.isPlaying) {
+            mediaPlayer.pause()
+            mediaPlayer.seekTo(0)
         }
     }
 
